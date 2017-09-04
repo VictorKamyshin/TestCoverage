@@ -39,7 +39,8 @@ public class SomeTest {
 
         for(Class clazz : allClasses){
             System.out.println("For class "+clazz.getSimpleName());
-            Object instance = callAllConstructors(clazz);
+            Object instance = generateObject(clazz, true);
+//            Object instance = callAllConstructors(clazz);
             Set<Method> methods = ReflectionUtils.getAllMethods(clazz,
                     ReflectionUtils.withModifier(Modifier.PUBLIC));
 
@@ -66,7 +67,8 @@ public class SomeTest {
                     //следовательно, параметр метода не был отмечен аннотацией и подменен моком
                     // и его надо просто создать
                     if (parameters.size() < i) {
-                        parameters.add(constructObject(parameterType));
+                        parameters.add(generateObject(parameterType,false));
+                        //parameters.add(constructObject(parameterType));
                     }
                 }
                 try {
@@ -80,9 +82,9 @@ public class SomeTest {
         }
     }
 
-    //вызываем все конструкторы указанного класса, чтобы увеличить покрытие тестами
-    private Object callAllConstructors(Class clazz){
-
+    //в зависимости от значения флага функция либо переберет все конструкторы переданного класса
+    //либо остановится после первого, который принес инстанс нужного класса
+    private Object generateObject(Class clazz, Boolean callAllConstructors){
         if(clazz.isPrimitive()){
             return generatePrimitive(clazz);
         }
@@ -93,9 +95,11 @@ public class SomeTest {
         Constructor<?>[] constructors = clazz.getConstructors();
         Object instance = null;
         for(Constructor constructor : constructors){
+
             ArrayList<Object> constructorParameters = new ArrayList<>();
             Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
             Class[] paramTypes = constructor.getParameterTypes();
+
             int i = 0;
             for(Annotation[] annotations : paramAnnotations) {
                 Class parameterType = paramTypes[i++];
@@ -105,8 +109,11 @@ public class SomeTest {
                         constructorParameters.add(mock(parameterType));
                     }
                 }
+                //если список параметров меньше номера текущей итерации, значит
+                //параметра, помеченного как @Autowired не нашлось и надо
+                //его создать самим, рекурсивно, с помощью этой же функции
                 if (constructorParameters.size() < i) {
-                    constructorParameters.add(constructObject(parameterType));
+                    constructorParameters.add(generateObject(parameterType,false));
                 }
             }
             try {
@@ -114,52 +121,14 @@ public class SomeTest {
             } catch(Exception e){
                 e.printStackTrace();
             }
-        }
-        return instance;
-    }
-
-    private Object constructObject(Class clazz){
-
-        if(clazz.isPrimitive()){
-            return generatePrimitive(clazz);
-        }
-        if(clazz.getSimpleName().equals("String")){
-            return "";
-        }
-
-        Constructor<?>[] constructors = clazz.getConstructors();
-        Object instance = null;
-        //в попытках создать инстанс нужного класса просто перебираем все конструкторы подряд
-        for(Constructor constructor : constructors){
-            if(instance == null) {
-                ArrayList<Object> constructorParameters = new ArrayList<>();
-                Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
-                Class[] paramTypes = constructor.getParameterTypes();
-                int i = 0;
-                for(Annotation[] annotations : paramAnnotations) {
-                    Class parameterType = paramTypes[i++];
-
-                    for (Annotation annotation : annotations) {
-                        if (annotation instanceof Autowired) {
-                            constructorParameters.add(mock(parameterType));
-                        }
-                    }
-                    if (constructorParameters.size() < i) {
-                        constructorParameters.add(constructObject(parameterType));
-                    }
+            //если задача перебрать все конструкторы не ставилась, то после первого же сработавшего
+            //можно выходить из функции
+            if(!callAllConstructors){
+                if(instance!=null){
+                    return instance;
                 }
-                try {
-                    instance = constructor.newInstance(constructorParameters.toArray());
-                    //если с помощью выбранного конструктора не получилось создать инстанс
-                    //черт с ним, просто пробуем следующий конструктор
-                } catch(Exception e){
-                    e.printStackTrace();
-                }
-            } else {
-                //мы получили искомый инстанс, цикл можно останавливать
-                break;
             }
-         }
+        }
         return instance;
     }
 
