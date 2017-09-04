@@ -117,39 +117,38 @@ public class SomeTest {
 
         Constructor<?>[] constructors = clazz.getConstructors();
         Object instance = null;
+        //в попытках создать инстанс нужного класса просто перебираем все конструкторы подряд
         for(Constructor constructor : constructors){
             if(instance == null) {
-                try {
-                    ArrayList<Object> constructorParameters = new ArrayList<>();
+                ArrayList<Object> constructorParameters = new ArrayList<>();
+                Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
+                Class[] paramTypes = constructor.getParameterTypes();
+                int i = 0;
+                for(Annotation[] annotations : paramAnnotations) {
+                    Class parameterType = paramTypes[i++];
 
-                    Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
-                    Class[] paramTypes = constructor.getParameterTypes();
-                    int i = 0;
-                    for(Annotation[] annotations : paramAnnotations) {
-                        Class parameterType = paramTypes[i++];
-
-                        for (Annotation annotation : annotations) {
-                            if (annotation instanceof Autowired) {
-                                constructorParameters.add(mock(parameterType));
-                            }
-                        }
-                        if (constructorParameters.size() < i) {
-                            constructorParameters.add(constructObject(parameterType));
+                    for (Annotation annotation : annotations) {
+                        if (annotation instanceof Autowired) {
+                            constructorParameters.add(mock(parameterType));
                         }
                     }
-
+                    if (constructorParameters.size() < i) {
+                        constructorParameters.add(constructObject(parameterType));
+                    }
+                }
+                try {
                     instance = constructor.newInstance(constructorParameters.toArray());
-
-                } catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
+                    //если с помощью выбранного конструктора не получилось создать инстанс
+                    //черт с ним, просто пробуем следующий конструктор
+                } catch(Exception e){
                     e.printStackTrace();
                 }
+            } else {
+                //мы получили искомый инстанс, цикл можно останавливать
+                break;
             }
          }
 
         return instance;
-    }
-
-    private Object getRef(){
-        return null;
     }
 }
