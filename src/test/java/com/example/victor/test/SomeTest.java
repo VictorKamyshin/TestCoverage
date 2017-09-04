@@ -17,6 +17,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 
+
 public class SomeTest {
 
     public static final String PACKAGE_PREF = "com.example.victor.services";
@@ -40,7 +41,7 @@ public class SomeTest {
         for(Class clazz : allClasses){
             System.out.println("For class "+clazz.getSimpleName());
             Object instance = generateObject(clazz, true);
-//            Object instance = callAllConstructors(clazz);
+
             Set<Method> methods = ReflectionUtils.getAllMethods(clazz,
                     ReflectionUtils.withModifier(Modifier.PUBLIC));
 
@@ -65,10 +66,9 @@ public class SomeTest {
                     //если в списке аргументов меньше, чем счетчик циклов, то это значит
                     //что на текущей итерации в него ничего не добавляли
                     //следовательно, параметр метода не был отмечен аннотацией и подменен моком
-                    // и его надо просто создать
+                    // и его надо просто создать самим
                     if (parameters.size() < i) {
                         parameters.add(generateObject(parameterType,false));
-                        //parameters.add(constructObject(parameterType));
                     }
                 }
                 try {
@@ -81,7 +81,6 @@ public class SomeTest {
 
         }
     }
-
     //в зависимости от значения флага функция либо переберет все конструкторы переданного класса
     //либо остановится после первого, который принес инстанс нужного класса
     private Object generateObject(Class clazz, Boolean callAllConstructors){
@@ -154,6 +153,4 @@ public class SomeTest {
                 return null;
         }
     }
-
-
 }
