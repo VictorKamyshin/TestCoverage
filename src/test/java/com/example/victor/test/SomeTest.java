@@ -82,30 +82,9 @@ public class SomeTest {
 
     //вызываем все конструкторы указанного класса, чтобы увеличить покрытие тестами
     private Object callAllConstructors(Class clazz){
-        switch (clazz.getSimpleName()){
-            case "double":
-                double dTmp = 1.0;
-                return dTmp;
-            case "short":
-                short sTmp = 1;
-                return sTmp;
-            case "boolean":
-                return  true;
-            case "float":
-                float fTmp = 1;
-                return fTmp;
-            case "byte":
-                byte bTmp = 1;
-                return bTmp;
-            case "long":
-                long lTmp = 1l;
-                return lTmp;
-            case "char":
-                char cTmp = '1';
-                return cTmp;
-            case "int":
-                int iTmp = 1;
-                return iTmp;
+
+        if(clazz.isPrimitive()){
+            return generatePrimitive(clazz);
         }
         if(clazz.getSimpleName().equals("String")){
             return "";
@@ -140,30 +119,9 @@ public class SomeTest {
     }
 
     private Object constructObject(Class clazz){
-        switch (clazz.getSimpleName()){
-            case "double":
-                double dTmp = 1.0;
-                return dTmp;
-            case "short":
-                short sTmp = 1;
-                return sTmp;
-            case "boolean":
-                return  true;
-            case "float":
-                float fTmp = 1;
-                return fTmp;
-            case "byte":
-                byte bTmp = 1;
-                return bTmp;
-            case "long":
-                long lTmp = 1l;
-                return lTmp;
-            case "char":
-                char cTmp = '1';
-                return cTmp;
-            case "int":
-                int iTmp = 1;
-                return iTmp;
+
+        if(clazz.isPrimitive()){
+            return generatePrimitive(clazz);
         }
         if(clazz.getSimpleName().equals("String")){
             return "";
@@ -204,4 +162,29 @@ public class SomeTest {
          }
         return instance;
     }
+
+    private Object generatePrimitive(Class clazz){
+        switch (clazz.getSimpleName()){
+            case "double":
+                return 1.0;
+            case "short":
+                return 1;
+            case "boolean":
+                return  true;
+            case "float":
+                return 1.0;
+            case "byte":
+                return 1;
+            case "long":
+                return 1l;
+            case "char":
+                return '1';
+            case "int":
+                return 1;
+            default:
+                return null;
+        }
+    }
+
+
 }

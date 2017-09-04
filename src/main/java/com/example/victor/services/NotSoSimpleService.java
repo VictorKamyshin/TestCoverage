@@ -31,7 +31,6 @@ public class NotSoSimpleService {
         return objectField;
     }
 
-
     public void setObjectField(@Autowired SomeClass objectField) {
         this.objectField = objectField;
     }
