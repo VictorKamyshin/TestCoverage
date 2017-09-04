@@ -11,6 +11,14 @@ public class NotSoSimpleService {
 
     private double aDouble;
 
+    public NotSoSimpleService(Integer i){
+        this.someInt = i;
+    }
+
+    public NotSoSimpleService(Double d){
+        this.aDouble = d;
+    }
+
     public double getaDouble() {
         return aDouble;
     }

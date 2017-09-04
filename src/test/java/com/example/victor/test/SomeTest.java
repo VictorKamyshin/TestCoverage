@@ -38,10 +38,9 @@ public class SomeTest {
 
         Set<Class<? extends Object>> allClasses = reflections.getSubTypesOf(Object.class);
 
-
         for(Class clazz : allClasses){
             System.out.println("For class "+clazz.getSimpleName());
-            Object instance = constructObject(clazz);
+            Object instance = callAllConstructors(clazz);
             Set<Method> methods = ReflectionUtils.getAllMethods(clazz,
                     ReflectionUtils.withModifier(Modifier.PUBLIC));
 
@@ -54,7 +53,6 @@ public class SomeTest {
                 int i = 0;
                 for(Annotation[] annotations : paramAnnotations) {
                     Class parameterType = paramTypes[i++];
-
                     //идем по списку параметров метода
                     //если поле отмечено аннотацией @Autowired
                     //то подменяем его моком, иначе пытаемся сконструировать подходящий объект
@@ -81,6 +79,66 @@ public class SomeTest {
             }
 
         }
+    }
+
+    private Object callAllConstructors(Class clazz){
+        switch (clazz.getSimpleName()){
+            case "double":
+                double dTmp = 1.0;
+                return dTmp;
+            case "short":
+                short sTmp = 1;
+                return sTmp;
+            case "boolean":
+                return  true;
+            case "float":
+                float fTmp = 1;
+                return fTmp;
+            case "byte":
+                byte bTmp = 1;
+                return bTmp;
+            case "long":
+                long lTmp = 1l;
+                return lTmp;
+            case "char":
+                char cTmp = '1';
+                return cTmp;
+            case "int":
+                int iTmp = 1;
+                return iTmp;
+        }
+        if(clazz.getSimpleName().equals("String")){
+            return "";
+        }
+
+        //вопрос в том, следует ли пытаться вызвать все конструкторы, или они не учитываются при расчете покрытия?
+        Constructor<?>[] constructors = clazz.getConstructors();
+        Object instance = null;
+        //в попытках создать инстанс нужного класса просто перебираем все конструкторы подряд
+        for(Constructor constructor : constructors){
+            ArrayList<Object> constructorParameters = new ArrayList<>();
+            Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
+            Class[] paramTypes = constructor.getParameterTypes();
+            int i = 0;
+            for(Annotation[] annotations : paramAnnotations) {
+                Class parameterType = paramTypes[i++];
+
+                for (Annotation annotation : annotations) {
+                    if (annotation instanceof Autowired) {
+                        constructorParameters.add(mock(parameterType));
+                    }
+                }
+                if (constructorParameters.size() < i) {
+                    constructorParameters.add(constructObject(parameterType));
+                }
+            }
+            try {
+                instance = constructor.newInstance(constructorParameters.toArray());
+            } catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+        return instance;
     }
 
     private Object constructObject(Class clazz){
@@ -113,6 +171,7 @@ public class SomeTest {
             return "";
         }
 
+        //вопрос в том, следует ли пытаться вызвать все конструкторы, или они не учитываются при расчете покрытия?
         Constructor<?>[] constructors = clazz.getConstructors();
         Object instance = null;
         //в попытках создать инстанс нужного класса просто перебираем все конструкторы подряд
@@ -146,7 +205,6 @@ public class SomeTest {
                 break;
             }
          }
-
         return instance;
     }
 }
