@@ -1,8 +1,5 @@
 package com.example.victor.test;
 
-import com.example.victor.services.SimpleService;
-import com.example.victor.utils.SomeClass;
-import org.junit.Assert;
 import org.junit.Test;
 import org.reflections.ReflectionUtils;
 import org.reflections.Reflections;
@@ -16,12 +13,13 @@ import static org.mockito.Mockito.*;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 
 public class SomeTest {
+
+    public static final String PACKAGE_PREF = "com.example.victor.services";
 
     @Test
     public void usefulTest(){
@@ -36,7 +34,7 @@ public class SomeTest {
         Reflections reflections = new Reflections(new ConfigurationBuilder()
         .setScanners(new SubTypesScanner(false), new ResourcesScanner())
         .setUrls(ClasspathHelper.forClassLoader(classLoadersList.toArray(new ClassLoader[0])))
-        .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix("com.example.victor.services"))));
+        .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix(PACKAGE_PREF))));
 
         Set<Class<? extends Object>> allClasses = reflections.getSubTypesOf(Object.class);
 
