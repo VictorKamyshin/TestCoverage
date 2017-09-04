@@ -28,8 +28,7 @@ public class SomeTest {
         classLoadersList.add(ClasspathHelper.contextClassLoader());
         classLoadersList.add(ClasspathHelper.staticClassLoader());
 
-
-        //возьмет все классы из указанного пакета
+        //возьмет все классы из пакета с указанным префиксом
         // главное, чтобы самого теста в этом пакете не оказалось
         Reflections reflections = new Reflections(new ConfigurationBuilder()
         .setScanners(new SubTypesScanner(false), new ResourcesScanner())
@@ -81,6 +80,7 @@ public class SomeTest {
         }
     }
 
+    //вызываем все конструкторы указанного класса, чтобы увеличить покрытие тестами
     private Object callAllConstructors(Class clazz){
         switch (clazz.getSimpleName()){
             case "double":
@@ -111,10 +111,8 @@ public class SomeTest {
             return "";
         }
 
-        //вопрос в том, следует ли пытаться вызвать все конструкторы, или они не учитываются при расчете покрытия?
         Constructor<?>[] constructors = clazz.getConstructors();
         Object instance = null;
-        //в попытках создать инстанс нужного класса просто перебираем все конструкторы подряд
         for(Constructor constructor : constructors){
             ArrayList<Object> constructorParameters = new ArrayList<>();
             Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
@@ -171,7 +169,6 @@ public class SomeTest {
             return "";
         }
 
-        //вопрос в том, следует ли пытаться вызвать все конструкторы, или они не учитываются при расчете покрытия?
         Constructor<?>[] constructors = clazz.getConstructors();
         Object instance = null;
         //в попытках создать инстанс нужного класса просто перебираем все конструкторы подряд
