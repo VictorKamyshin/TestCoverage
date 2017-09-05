@@ -34,10 +34,6 @@ public class SomeTest {
 
     @Test
     public void usefulTest(){
-        List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
-        classLoadersList.add(ClasspathHelper.contextClassLoader());
-        classLoadersList.add(ClasspathHelper.staticClassLoader());
-
         //возьмет все классы из пакета с указанным префиксом
         //главное, чтобы самого теста в этом пакете не оказалось
         Reflections reflections = new Reflections(new ConfigurationBuilder()
