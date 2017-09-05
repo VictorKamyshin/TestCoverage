@@ -29,12 +29,13 @@ public class SomeTest {
     public static final String PACKAGE_PREF = "com.example.victor.services";
 
     //просто метод, из которого можно будет достать инстанс аннотации(?)
+    //я не уверен, но, по моему, contains и содержащийся в нем equals должны работать быстрее, чем instanceof
     @Autowired
     public static void autowiredCarrier(){};
 
     @Test
     public void usefulTest(){
-        //возьмет все классы из пакета с указанным префиксом
+        //возьмет все классы из указанного пакета
         //главное, чтобы самого теста в этом пакете не оказалось
         Reflections reflections = new Reflections(new ConfigurationBuilder()
                 .setScanners(new SubTypesScanner(false), new ResourcesScanner())
@@ -92,6 +93,10 @@ public class SomeTest {
 
     //в зависимости от значения флага функция либо переберет все конструкторы переданного класса
     //либо остановится после первого, который принес нужный инстанс
+    //возможная проблема - если метод принимает сложноконструируемый объект
+    //для создания которого нужно множество других объектов
+    //то тест побежит рекурсивно по всем этим конструкторам
+    //хочется верить, что сложные объекты передаются как @Autowired и тест сможет их замокать
     private Object generateObject(Class clazz, Boolean callAllConstructors){
         if(clazz.isPrimitive()){
             return generatePrimitive(clazz);
