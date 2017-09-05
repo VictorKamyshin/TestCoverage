@@ -1,88 +1,101 @@
 package com.example.victor.test;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.reflections.ReflectionUtils;
 import org.reflections.Reflections;
 import org.reflections.scanners.*;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import static org.mockito.Mockito.*;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import org.springframework.test.context.junit4.SpringRunner;
 
+import static org.mockito.Mockito.*;
 
+@RunWith(SpringRunner.class)
 public class SomeTest {
+
+    private final Logger LOG = LoggerFactory.getLogger(SomeTest.class);
 
     public static final String PACKAGE_PREF = "com.example.victor.services";
 
+    //просто метод, из которого можно будет достать инстанс аннотации(?)
+    @Autowired
+    public static void autowiredCarrier(){};
+
     @Test
     public void usefulTest(){
-
         List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
         classLoadersList.add(ClasspathHelper.contextClassLoader());
         classLoadersList.add(ClasspathHelper.staticClassLoader());
 
         //возьмет все классы из пакета с указанным префиксом
-        // главное, чтобы самого теста в этом пакете не оказалось
+        //главное, чтобы самого теста в этом пакете не оказалось
         Reflections reflections = new Reflections(new ConfigurationBuilder()
-        .setScanners(new SubTypesScanner(false), new ResourcesScanner())
-        .setUrls(ClasspathHelper.forClassLoader(classLoadersList.toArray(new ClassLoader[0])))
-        .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix(PACKAGE_PREF))));
+                .setScanners(new SubTypesScanner(false), new ResourcesScanner())
+                .setUrls(ClasspathHelper.forPackage(PACKAGE_PREF))
+                .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix(PACKAGE_PREF))));
 
-        Set<Class<? extends Object>> allClasses = reflections.getSubTypesOf(Object.class);
+        for(Class clazz : reflections.getSubTypesOf(Object.class)){
 
-        for(Class clazz : allClasses){
-            System.out.println("For class "+clazz.getSimpleName());
+            LOG.debug("For class " + clazz.getSimpleName() + " started detour:");
+            //конструируем инстанс "тестируемого" класса, попутно перебирая все конструкторы
             Object instance = generateObject(clazz, true);
 
-            Set<Method> methods = ReflectionUtils.getAllMethods(clazz,
-                    ReflectionUtils.withModifier(Modifier.PUBLIC));
+            for (Method method : ReflectionUtils.getAllMethods(clazz,
+                    ReflectionUtils.withModifier(Modifier.PUBLIC))) {
 
-            for (Method method : methods) {
-                System.out.println(">>>" + method.getName());
+                LOG.debug("call method " + method.getName());
+
                 ArrayList<Object> parameters = new ArrayList<>();
 
-                Annotation[][] paramAnnotations = method.getParameterAnnotations();
-                Class[] paramTypes = method.getParameterTypes();
-                int i = 0;
-                for(Annotation[] annotations : paramAnnotations) {
-                    Class parameterType = paramTypes[i++];
-                    //идем по списку параметров метода
-                    //если поле отмечено аннотацией @Autowired
-                    //то подменяем его моком, иначе пытаемся сконструировать подходящий объект
-                    for (Annotation annotation : annotations) {
-                        if (annotation instanceof Autowired) {
-                            System.out.println("Mock time!");
-                            parameters.add(mock(parameterType));
-                        }
+                //если весь метод отмечен как @Autowired, то все его параметры подменяем моками
+                if(method.isAnnotationPresent(Autowired.class)){
+                    for(Class parameterType : method.getParameterTypes()){
+                        LOG.debug("creating a list of mocks for autowired method");
+                        parameters.add(mock(parameterType));
                     }
-                    //если в списке аргументов меньше, чем счетчик циклов, то это значит
-                    //что на текущей итерации в него ничего не добавляли
-                    //следовательно, параметр метода не был отмечен аннотацией и подменен моком
-                    // и его надо просто создать самим
-                    if (parameters.size() < i) {
-                        parameters.add(generateObject(parameterType,false));
+                } else {
+                    //иначе - надо смотреть на каждый параметр в отдельности
+                    //главная трудность тут - если сказать parameterType.getAnnotation()
+                    //то получится список аннотаций класса параметра, а не аннотации параметра метода
+                    //поэтому приходится получать аннотации параметров всей кучей
+                    Annotation[][] parametersAnnotations = method.getParameterAnnotations();
+                    Integer i = 0;
+                    for(Class parameterType : method.getParameterTypes()) {
+                        try {
+                            if (Arrays.asList(parametersAnnotations[i++])
+                                    .contains(getClass().getMethod("autowiredCarrier")
+                                            .getAnnotation(Autowired.class))){
+                                LOG.debug("creating single mock for autowired parameter");
+                                parameters.add(mock(parameterType));
+                            } else{
+                                parameters.add(generateObject(parameterType, false));
+                            }
+                        } catch (NoSuchMethodException ignore){ }
                     }
                 }
+
                 try {
                     method.invoke(instance, parameters.toArray());
-                } catch(Exception e){
+                } catch(Throwable ignore){
                     //метод может выбрасывать любые исключения - главное, чтобы тест шел дальше
-                    e.printStackTrace();
                 }
             }
-
         }
     }
+
     //в зависимости от значения флага функция либо переберет все конструкторы переданного класса
-    //либо остановится после первого, который принес инстанс нужного класса
+    //либо остановится после первого, который принес нужный инстанс
     private Object generateObject(Class clazz, Boolean callAllConstructors){
         if(clazz.isPrimitive()){
             return generatePrimitive(clazz);
@@ -91,44 +104,57 @@ public class SomeTest {
             return "";
         }
 
-        Constructor<?>[] constructors = clazz.getConstructors();
         Object instance = null;
-        for(Constructor constructor : constructors){
+        for(Constructor constructor : clazz.getConstructors()){
 
             ArrayList<Object> constructorParameters = new ArrayList<>();
-            Annotation[][] paramAnnotations = constructor.getParameterAnnotations();
-            Class[] paramTypes = constructor.getParameterTypes();
 
-            int i = 0;
-            for(Annotation[] annotations : paramAnnotations) {
-                Class parameterType = paramTypes[i++];
-
-                for (Annotation annotation : annotations) {
-                    if (annotation instanceof Autowired) {
+            Annotation[][] parametersAnnotations = constructor.getParameterAnnotations();
+            Integer i = 0;
+            for(Class parameterType : constructor.getParameterTypes()){
+                try {
+                    if (Arrays.asList(parametersAnnotations[i++])
+                            .contains(getClass().getMethod("autowiredCarrier")
+                                    .getAnnotation(Autowired.class))) {
+                        LOG.debug("creating mock for autowired parameter in constructor");
                         constructorParameters.add(mock(parameterType));
+                    } else {
+                        constructorParameters.add(generateObject(parameterType,false));
                     }
-                }
-                //если список параметров меньше номера текущей итерации, значит
-                //параметра, помеченного как @Autowired не нашлось и надо
-                //его создать самим, рекурсивно, с помощью этой же функции
-                if (constructorParameters.size() < i) {
-                    constructorParameters.add(generateObject(parameterType,false));
-                }
+                } catch (NoSuchMethodException ignore) {}
             }
             try {
                 instance = constructor.newInstance(constructorParameters.toArray());
-            } catch(Exception e){
-                e.printStackTrace();
+            } catch(Exception ignore){
+
             }
-            //если задача перебрать все конструкторы не ставилась, то после первого же сработавшего
-            //можно выходить из функции
-            if(!callAllConstructors){
-                if(instance!=null){
+            if(instance!=null){
+                //если задача перебрать все конструкторы не ставилась, то после первого же сработавшего
+                //можно выходить из функции
+                if(!callAllConstructors){
+                    //мокать @Autowired поля имеет смысл, если этот инстанс мы собираемся вернуть
+                    setAutowiredFields(instance);
                     return instance;
                 }
             }
         }
+        setAutowiredFields(instance);
+        //если целью стояло перебрать все конструкторы, то на выходе из цикла мы должны иметь искомый инстанс
         return instance;
+    }
+
+    private void setAutowiredFields(Object instance){
+        for(Field field : instance.getClass().getDeclaredFields()){
+            if(field.getAnnotation(Autowired.class) != null){
+                LOG.debug("creating mock for autowired field!");
+                field.setAccessible(true);
+                try {
+                    field.set(instance, mock(field.getType()));
+                } catch (IllegalAccessException e){
+                    LOG.debug(e.getMessage());
+                }
+            }
+        }
     }
 
     private Object generatePrimitive(Class clazz){

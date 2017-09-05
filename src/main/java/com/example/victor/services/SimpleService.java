@@ -8,6 +8,8 @@ public class SimpleService {
 
     private Double doubleField;
 
+    public SimpleService(){}
+
     public String getStringField() {
         return stringField;
     }

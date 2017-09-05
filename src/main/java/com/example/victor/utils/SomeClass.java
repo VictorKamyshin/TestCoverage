@@ -11,10 +11,4 @@ public class SomeClass {
         this.integer = integer;
         this.string = string;
     }
-
-    @Bean
-    public SomeClass someClass(){
-        System.out.println("Bean method Called!");
-        return new SomeClass(1,"2");
-    }
 }
