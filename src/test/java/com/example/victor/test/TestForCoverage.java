@@ -19,6 +19,7 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import static java.util.Arrays.asList;
 import static org.mockito.Mockito.*;
 
 @RunWith(SpringRunner.class)
@@ -74,7 +75,7 @@ public class TestForCoverage {
                     Integer i = 0;
                     for(Class parameterType : method.getParameterTypes()) {
                         try {
-                            if (Arrays.asList(parametersAnnotations[i++])
+                            if (asList(parametersAnnotations[i++])
                                     .contains(getClass().getMethod("autowiredCarrier")
                                             .getAnnotation(Autowired.class))){
                                 LOG.debug("creating single mock for autowired parameter");
@@ -98,8 +99,9 @@ public class TestForCoverage {
     //в зависимости от значения флага функция либо переберет все конструкторы переданного класса
     //либо остановится после первого, который принес нужный инстанс
     //глубина рекурсии ограничена - чтобы не создавать миллион объектов или не попасться в вечный цикл
-    //задача - ограничить глубину рекурсии и сделать это как-то менее уебищно
-    //Ну то есть это просто обход дерева в глубину, концевой
+    //А еще можно напороться на вещь в духе A(A a)
+    //на сколько хороша рекурсия с ограничением в виде поля класса - нинасколько
+    //но чтобы сделать по другому надо перетряхнуть весь алгоритм и по хорошему избавиться от рекурсии
     private Object generateObject(Class clazz, Boolean callAllConstructors){
         LOG.debug("Current level of recursion = " + currentRecursionLevel);
         currentRecursionLevel++;
@@ -113,6 +115,8 @@ public class TestForCoverage {
         }
 
         Object instance = null;
+        Constructor[] constructors = clazz.getConstructors();
+
         for(Constructor constructor : clazz.getConstructors()){
 
             ArrayList<Object> constructorParameters = new ArrayList<>();
@@ -121,7 +125,7 @@ public class TestForCoverage {
             Integer i = 0;
             for(Class parameterType : constructor.getParameterTypes()){
                 try {
-                    if (Arrays.asList(parametersAnnotations[i++])
+                    if (asList(parametersAnnotations[i++])
                             .contains(getClass().getMethod("autowiredCarrier")
                                     .getAnnotation(Autowired.class))) {
                         LOG.debug("creating mock for autowired parameter in constructor");
