@@ -14,4 +14,9 @@ public class Main {
         ConfigurableApplicationContext context = SpringApplication.run(Main.class, args);
     }
 
+    @Bean
+    public SimpleService simpleService(){
+        return new SimpleService();
+    }
+
 }

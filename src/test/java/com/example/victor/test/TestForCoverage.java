@@ -22,9 +22,11 @@ import org.springframework.test.context.junit4.SpringRunner;
 import static org.mockito.Mockito.*;
 
 @RunWith(SpringRunner.class)
-public class SomeTest {
+public class TestForCoverage {
 
-    private final Logger LOG = LoggerFactory.getLogger(SomeTest.class);
+    //private Integer currentRecursionLevel = 0;
+
+    private final Logger LOG = LoggerFactory.getLogger(TestForCoverage.class);
 
     public static final String PACKAGE_PREF = "com.example.victor.services";
 
@@ -97,6 +99,8 @@ public class SomeTest {
     //для создания которого нужно множество других объектов
     //то тест побежит рекурсивно по всем этим конструкторам
     //хочется верить, что сложные объекты передаются как @Autowired и тест сможет их замокать
+    //Другая возможная проблема - если, допустим, класс А имеет конструктор, в который надо передать объект класса Б,
+    //И в то же время класс Б имеет конструктор, в котороый нужно передать объект класса А, то рекурсия будет вечной.
     private Object generateObject(Class clazz, Boolean callAllConstructors){
         if(clazz.isPrimitive()){
             return generatePrimitive(clazz);
@@ -133,7 +137,7 @@ public class SomeTest {
                 //если задача перебрать все конструкторы не ставилась, то после первого же сработавшего
                 //можно выходить из функции
                 if(!callAllConstructors){
-                    //мокать @Autowired поля имеет смысл, если этот инстанс мы собираемся вернуть
+                    //мокать @Autowired поля имеет смысл, если этот инстанс мы собираемся передать наружу
                     setAutowiredFields(instance);
                     return instance;
                 }
