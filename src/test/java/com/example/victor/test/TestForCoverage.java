@@ -24,12 +24,14 @@ import static org.mockito.Mockito.*;
 @RunWith(SpringRunner.class)
 public class TestForCoverage {
 
-    //private Integer currentRecursionLevel = 0;
+    private Integer currentRecursionLevel = 0;
+
+    private final Integer maxRecursionLevel = 5;
 
     private final Logger LOG = LoggerFactory.getLogger(TestForCoverage.class);
 
     public static final String PACKAGE_PREF = "com.example.victor.services";
-
+    //public static final String PACKAGE_PREF = "com.example.victor.utils";
     //просто метод, из которого можно будет достать инстанс аннотации(?)
     //я не уверен, но, по моему, contains и содержащийся в нем equals должны работать быстрее, чем instanceof
     @Autowired
@@ -95,17 +97,18 @@ public class TestForCoverage {
 
     //в зависимости от значения флага функция либо переберет все конструкторы переданного класса
     //либо остановится после первого, который принес нужный инстанс
-    //возможная проблема - если метод принимает сложноконструируемый объект
-    //для создания которого нужно множество других объектов
-    //то тест побежит рекурсивно по всем этим конструкторам
-    //хочется верить, что сложные объекты передаются как @Autowired и тест сможет их замокать
-    //Другая возможная проблема - если, допустим, класс А имеет конструктор, в который надо передать объект класса Б,
-    //И в то же время класс Б имеет конструктор, в котороый нужно передать объект класса А, то рекурсия будет вечной.
+    //глубина рекурсии ограничена - чтобы не создавать миллион объектов или не попасться в вечный цикл
+    //задача - ограничить глубину рекурсии и сделать это как-то менее уебищно
+    //Ну то есть это просто обход дерева в глубину, концевой
     private Object generateObject(Class clazz, Boolean callAllConstructors){
+        LOG.debug("Current level of recursion = " + currentRecursionLevel);
+        currentRecursionLevel++;
         if(clazz.isPrimitive()){
+            currentRecursionLevel--;
             return generatePrimitive(clazz);
         }
         if(clazz.getSimpleName().equals("String")){
+            currentRecursionLevel--;
             return "";
         }
 
@@ -124,7 +127,11 @@ public class TestForCoverage {
                         LOG.debug("creating mock for autowired parameter in constructor");
                         constructorParameters.add(mock(parameterType));
                     } else {
-                        constructorParameters.add(generateObject(parameterType,false));
+                        if(currentRecursionLevel < maxRecursionLevel) {
+                            constructorParameters.add(generateObject(parameterType, false));
+                        } else {
+                            constructorParameters.add(mock(parameterType));
+                        }
                     }
                 } catch (NoSuchMethodException ignore) {}
             }
@@ -139,11 +146,13 @@ public class TestForCoverage {
                 if(!callAllConstructors){
                     //мокать @Autowired поля имеет смысл, если этот инстанс мы собираемся передать наружу
                     setAutowiredFields(instance);
+                    currentRecursionLevel--;
                     return instance;
                 }
             }
         }
         setAutowiredFields(instance);
+        currentRecursionLevel--;
         //если целью стояло перебрать все конструкторы, то на выходе из цикла мы должны иметь искомый инстанс
         return instance;
     }
