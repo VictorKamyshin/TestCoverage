@@ -32,9 +32,11 @@ public class TestForCoverage {
     private final Logger LOG = LoggerFactory.getLogger(TestForCoverage.class);
 
     public static final String PACKAGE_PREF = "com.example.victor.services";
-    //public static final String PACKAGE_PREF = "com.example.victor.utils";
-    //просто метод, из которого можно будет достать инстанс аннотации(?)
-    //я не уверен, но, по моему, contains и содержащийся в нем equals должны работать быстрее, чем instanceof
+
+    /**
+    * просто метод, из которого можно будет достать инстанс аннотации(?)
+    * я не уверен, но, по моему, contains и содержащийся в нем equals должны работать быстрее, чем instanceof
+     */
     @Autowired
     public static void autowiredCarrier(){};
 
@@ -51,7 +53,7 @@ public class TestForCoverage {
 
             LOG.debug("For class " + clazz.getSimpleName() + " started detour:");
             //конструируем инстанс "тестируемого" класса, попутно перебирая все конструкторы
-            Object instance = generateObject(clazz, true);
+            Object instance = generateObject(clazz, true, 0);
 
             for (Method method : ReflectionUtils.getAllMethods(clazz,
                     ReflectionUtils.withModifier(Modifier.PUBLIC))) {
@@ -81,7 +83,7 @@ public class TestForCoverage {
                                 LOG.debug("creating single mock for autowired parameter");
                                 parameters.add(mock(parameterType));
                             } else{
-                                parameters.add(generateObject(parameterType, false));
+                                parameters.add(generateObject(parameterType, false, 0));
                             }
                         } catch (NoSuchMethodException ignore){ }
                     }
@@ -96,27 +98,24 @@ public class TestForCoverage {
         }
     }
 
-    //в зависимости от значения флага функция либо переберет все конструкторы переданного класса
-    //либо остановится после первого, который принес нужный инстанс
-    //глубина рекурсии ограничена - чтобы не создавать миллион объектов или не попасться в вечный цикл
-    //А еще можно напороться на вещь в духе A(A a)
-    //на сколько хороша рекурсия с ограничением в виде поля класса - нинасколько
-    //но чтобы сделать по другому надо перетряхнуть весь алгоритм и по хорошему избавиться от рекурсии
-    private Object generateObject(Class clazz, Boolean callAllConstructors){
-        LOG.debug("Current level of recursion = " + currentRecursionLevel);
-        currentRecursionLevel++;
+    /**
+    * в зависимости от значения флага функция либо переберет все конструкторы переданного класса
+    * либо остановится после первого, который принес нужный инстанс
+    * глубина рекурсии ограничена - чтобы не создавать миллион объектов или не попасться в вечный цикл
+    * А еще можно напороться на вещь в духе A(A a)
+    * насколько хороша рекурсия с ограничением в виде поля класса - нинасколько
+    * но чтобы сделать по другому надо перетряхнуть весь алгоритм и по хорошему вообще избавиться от нее
+     */
+    private Object generateObject(Class clazz, Boolean callAllConstructors, Integer recursionLevel){
+        LOG.debug("Current level of recursion = " + recursionLevel);
         if(clazz.isPrimitive()){
-            currentRecursionLevel--;
             return generatePrimitive(clazz);
         }
         if(clazz.getSimpleName().equals("String")){
-            currentRecursionLevel--;
             return "";
         }
 
         Object instance = null;
-        Constructor[] constructors = clazz.getConstructors();
-
         for(Constructor constructor : clazz.getConstructors()){
 
             ArrayList<Object> constructorParameters = new ArrayList<>();
@@ -131,8 +130,8 @@ public class TestForCoverage {
                         LOG.debug("creating mock for autowired parameter in constructor");
                         constructorParameters.add(mock(parameterType));
                     } else {
-                        if(currentRecursionLevel < maxRecursionLevel) {
-                            constructorParameters.add(generateObject(parameterType, false));
+                        if(recursionLevel < maxRecursionLevel) {
+                            constructorParameters.add(generateObject(parameterType, false, recursionLevel + 1));
                         } else {
                             constructorParameters.add(mock(parameterType));
                         }
@@ -144,19 +143,15 @@ public class TestForCoverage {
             } catch(Exception ignore){
 
             }
-            if(instance!=null){
+            if(instance!=null && !callAllConstructors){
                 //если задача перебрать все конструкторы не ставилась, то после первого же сработавшего
                 //можно выходить из функции
-                if(!callAllConstructors){
-                    //мокать @Autowired поля имеет смысл, если этот инстанс мы собираемся передать наружу
-                    setAutowiredFields(instance);
-                    currentRecursionLevel--;
-                    return instance;
-                }
+                //мокать @Autowired поля имеет смысл, если этот инстанс мы собираемся передать наружу
+                setAutowiredFields(instance);
+                return instance;
             }
         }
         setAutowiredFields(instance);
-        currentRecursionLevel--;
         //если целью стояло перебрать все конструкторы, то на выходе из цикла мы должны иметь искомый инстанс
         return instance;
     }
