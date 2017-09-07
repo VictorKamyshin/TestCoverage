@@ -25,14 +25,11 @@ import static org.mockito.Mockito.*;
 @RunWith(SpringRunner.class)
 public class TestForCoverage {
 
-    private Integer currentRecursionLevel = 0;
-
     private final Integer maxRecursionLevel = 5;
 
     private final Logger LOG = LoggerFactory.getLogger(TestForCoverage.class);
 
     public static final String PACKAGE_PREF = "com.example.victor.services";
-
     /**
     * просто метод, из которого можно будет достать инстанс аннотации(?)
     * я не уверен, но, по моему, contains и содержащийся в нем equals должны работать быстрее, чем instanceof
@@ -57,11 +54,8 @@ public class TestForCoverage {
 
             for (Method method : ReflectionUtils.getAllMethods(clazz,
                     ReflectionUtils.withModifier(Modifier.PUBLIC))) {
-
                 LOG.debug("call method " + method.getName());
-
                 ArrayList<Object> parameters = new ArrayList<>();
-
                 //если весь метод отмечен как @Autowired, то все его параметры подменяем моками
                 if(method.isAnnotationPresent(Autowired.class)){
                     for(Class parameterType : method.getParameterTypes()){
@@ -88,7 +82,6 @@ public class TestForCoverage {
                         } catch (NoSuchMethodException ignore){ }
                     }
                 }
-
                 try {
                     method.invoke(instance, parameters.toArray());
                 } catch(Throwable ignore){
@@ -99,12 +92,11 @@ public class TestForCoverage {
     }
 
     /**
-    * в зависимости от значения флага функция либо переберет все конструкторы переданного класса
-    * либо остановится после первого, который принес нужный инстанс
-    * глубина рекурсии ограничена - чтобы не создавать миллион объектов или не попасться в вечный цикл
-    * А еще можно напороться на вещь в духе A(A a)
-    * насколько хороша рекурсия с ограничением в виде поля класса - нинасколько
-    * но чтобы сделать по другому надо перетряхнуть весь алгоритм и по хорошему вообще избавиться от нее
+     * в зависимости от значения флага функция либо переберет все конструкторы переданного класса
+     * либо остановится после первого, который принес нужный инстанс
+     * глубина рекурсии ограничена - чтобы не создавать миллион объектов или не попасться в вечный цикл
+     * например, есть класс A имеющий в числе прочих конструктор A(B b) и класс B c конструктором B(A a)
+     * А еще можно напороться на вещь в духе A(A a)
      */
     private Object generateObject(Class clazz, Boolean callAllConstructors, Integer recursionLevel){
         LOG.debug("Current level of recursion = " + recursionLevel);
